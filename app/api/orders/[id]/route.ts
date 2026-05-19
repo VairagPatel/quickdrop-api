@@ -15,10 +15,10 @@ export async function OPTIONS() {
 // GET: Fetch single order with all items and product details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const { data: order, error } = await supabase
       .from('orders')
@@ -56,10 +56,10 @@ export async function GET(
 // PATCH: Update order status (pending→picking→dispatched→delivered)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { status, rider_id } = body;
 
