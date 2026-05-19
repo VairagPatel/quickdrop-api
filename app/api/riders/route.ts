@@ -1,64 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-// CORS headers
-const headers = {
+const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
 export async function OPTIONS() {
-  return NextResponse.json({}, { headers });
+  return NextResponse.json({}, { headers: corsHeaders });
 }
 
-// GET: Fetch all users where role = 'rider' with their active order count
+// GET: Fetch all riders with active order count
 export async function GET(request: NextRequest) {
   try {
-    const { data: riders, error } = await supabase
+    // Fetch all users where role = 'rider'
+    const { data: riders, error: ridersError } = await supabase
       .from('users')
-      .select(`
-        *,
-        orders!rider_id(id, status)
-      `)
+      .select('id, name, email, phone, created_at')
       .eq('role', 'rider')
       .order('name', { ascending: true });
 
-    if (error) {
+    if (ridersError) {
       return NextResponse.json(
-        { error: error.message },
-        { status: 400, headers }
+        { error: ridersError.message },
+        { status: 400, headers: corsHeaders }
       );
     }
 
-    // Transform data to include active order count
-    const ridersWithStats = riders?.map((rider: any) => {
-      const activeOrders = rider.orders?.filter(
-        (order: any) =>
-          order.status === 'pending' ||
-          order.status === 'picking' ||
-          order.status === 'dispatched'
-      );
+    // For each rider, count their active (non-delivered) orders
+    const ridersWithOrderCount = await Promise.all(
+      riders.map(async (rider) => {
+        const { count, error: countError } = await supabase
+          .from('orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('rider_id', rider.id)
+          .in('status', ['pending', 'picking', 'dispatched']);
 
-      return {
-        id: rider.id,
-        email: rider.email,
-        name: rider.name,
-        phone: rider.phone,
-        role: rider.role,
-        created_at: rider.created_at,
-        active_order_count: activeOrders?.length || 0,
-      };
-    });
+        if (countError) {
+          console.error(`Count error for rider ${rider.id}:`, countError);
+          return { ...rider, active_order_count: 0 };
+        }
 
-    return NextResponse.json(
-      { riders: ridersWithStats },
-      { status: 200, headers }
+        return { ...rider, active_order_count: count || 0 };
+      })
     );
-  } catch (error: any) {
+
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500, headers }
+      { riders: ridersWithOrderCount },
+      { status: 200, headers: corsHeaders }
+    );
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { status: 500, headers: corsHeaders }
     );
   }
 }

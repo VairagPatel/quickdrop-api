@@ -1,0 +1,310 @@
+### QuickDrop Authentication API Examples
+### Use with REST Client VS Code extension
+
+@baseUrl = http://localhost:3000
+@contentType = application/json
+
+###############################################
+# USER REGISTRATION
+###############################################
+
+### Register a Customer
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "name": "John Customer",
+  "email": "john@customer.com",
+  "password": "password123",
+  "role": "customer"
+}
+
+### Register a Rider
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "name": "Mike Rider",
+  "email": "mike@rider.com",
+  "password": "password123",
+  "role": "rider"
+}
+
+### Register a Store Manager
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "name": "Sarah Manager",
+  "email": "sarah@manager.com",
+  "password": "password123",
+  "role": "store_manager"
+}
+
+### Register an Admin
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "name": "Admin User",
+  "email": "admin@quickdrop.com",
+  "password": "admin123",
+  "role": "admin"
+}
+
+###############################################
+# AUTHENTICATION
+###############################################
+
+### Get CSRF Token (Required for NextAuth)
+GET {{baseUrl}}/api/auth/csrf
+
+### Get Available Providers
+GET {{baseUrl}}/api/auth/providers
+
+### Sign In (Login) - Method 1: Direct Credentials
+POST {{baseUrl}}/api/auth/callback/credentials
+Content-Type: application/x-www-form-urlencoded
+
+email=john@customer.com&password=password123
+
+### Sign In (Login) - Method 2: JSON Format
+POST {{baseUrl}}/api/auth/signin/credentials
+Content-Type: {{contentType}}
+
+{
+  "email": "john@customer.com",
+  "password": "password123",
+  "callbackUrl": "/"
+}
+
+### Get Current Session
+GET {{baseUrl}}/api/auth/session
+
+### Sign Out (Logout)
+POST {{baseUrl}}/api/auth/signout
+
+###############################################
+# PROTECTED ROUTES (Require Authentication)
+###############################################
+
+### Get All Orders (Protected)
+GET {{baseUrl}}/api/orders
+
+### Create Order (Protected)
+POST {{baseUrl}}/api/orders
+Content-Type: {{contentType}}
+
+{
+  "customer_id": "customer-uuid-here",
+  "area": "Downtown",
+  "items": [
+    {
+      "product_id": "product-uuid-1",
+      "quantity": 2,
+      "price": 5.99
+    }
+  ]
+}
+
+### Get Single Order (Protected)
+GET {{baseUrl}}/api/orders/order-uuid-here
+
+### Update Order Status (Protected)
+PATCH {{baseUrl}}/api/orders/order-uuid-here
+Content-Type: {{contentType}}
+
+{
+  "status": "dispatched"
+}
+
+### Get All Products (Protected)
+GET {{baseUrl}}/api/products
+
+### Update Product Stock (Protected)
+PATCH {{baseUrl}}/api/products
+Content-Type: {{contentType}}
+
+{
+  "id": "product-uuid-here",
+  "stock": 50
+}
+
+### Get All Riders (Protected)
+GET {{baseUrl}}/api/riders
+
+###############################################
+# ERROR TESTING
+###############################################
+
+### Try to Register with Invalid Role
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "name": "Invalid User",
+  "email": "invalid@test.com",
+  "password": "password123",
+  "role": "invalid_role"
+}
+
+### Try to Register with Duplicate Email
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "name": "Duplicate User",
+  "email": "john@customer.com",
+  "password": "password123",
+  "role": "customer"
+}
+
+### Try to Login with Wrong Password
+POST {{baseUrl}}/api/auth/callback/credentials
+Content-Type: application/x-www-form-urlencoded
+
+email=john@customer.com&password=wrongpassword
+
+### Try to Access Protected Route Without Auth
+# Should return 401 Unauthorized
+GET {{baseUrl}}/api/orders
+
+###############################################
+# COMPLETE AUTHENTICATION WORKFLOW
+###############################################
+
+### Step 1: Register a new customer
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "name": "Alice Customer",
+  "email": "alice@example.com",
+  "password": "alice123",
+  "role": "customer"
+}
+
+### Step 2: Login as the customer
+POST {{baseUrl}}/api/auth/callback/credentials
+Content-Type: application/x-www-form-urlencoded
+
+email=alice@example.com&password=alice123
+
+### Step 3: Check session (should show user info)
+GET {{baseUrl}}/api/auth/session
+
+### Step 4: Access protected route (should work now)
+GET {{baseUrl}}/api/orders
+
+### Step 5: Create an order
+POST {{baseUrl}}/api/orders
+Content-Type: {{contentType}}
+
+{
+  "customer_id": "alice-uuid-from-step-1",
+  "area": "North District",
+  "items": [
+    {
+      "product_id": "product-uuid",
+      "quantity": 3,
+      "price": 4.99
+    }
+  ]
+}
+
+### Step 6: Logout
+POST {{baseUrl}}/api/auth/signout
+
+### Step 7: Try to access protected route again (should fail)
+GET {{baseUrl}}/api/orders
+
+###############################################
+# ROLE-BASED ACCESS TESTING
+###############################################
+
+### Login as Admin
+POST {{baseUrl}}/api/auth/callback/credentials
+Content-Type: application/x-www-form-urlencoded
+
+email=admin@quickdrop.com&password=admin123
+
+### Check Admin Session
+GET {{baseUrl}}/api/auth/session
+
+### Access Admin Route (should work for admin)
+GET {{baseUrl}}/api/admin/dashboard
+
+### Logout Admin
+POST {{baseUrl}}/api/auth/signout
+
+### Login as Customer
+POST {{baseUrl}}/api/auth/callback/credentials
+Content-Type: application/x-www-form-urlencoded
+
+email=john@customer.com&password=password123
+
+### Try to Access Admin Route as Customer (should return 403)
+GET {{baseUrl}}/api/admin/dashboard
+
+###############################################
+# REGISTRATION VALIDATION TESTS
+###############################################
+
+### Missing Required Fields
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "name": "Test User",
+  "email": "test@test.com"
+}
+
+### Invalid Email Format
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "name": "Test User",
+  "email": "not-an-email",
+  "password": "password123",
+  "role": "customer"
+}
+
+### Empty Password
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "name": "Test User",
+  "email": "test@test.com",
+  "password": "",
+  "role": "customer"
+}
+
+###############################################
+# SESSION MANAGEMENT
+###############################################
+
+### Get Session (Not Logged In)
+GET {{baseUrl}}/api/auth/session
+
+### Login
+POST {{baseUrl}}/api/auth/callback/credentials
+Content-Type: application/x-www-form-urlencoded
+
+email=john@customer.com&password=password123
+
+### Get Session (Logged In)
+GET {{baseUrl}}/api/auth/session
+
+### Verify Session Persists Across Requests
+GET {{baseUrl}}/api/orders
+
+### Another Request (Session Should Still Work)
+GET {{baseUrl}}/api/products
+
+### Logout
+POST {{baseUrl}}/api/auth/signout
+
+### Verify Session is Gone
+GET {{baseUrl}}/api/auth/session

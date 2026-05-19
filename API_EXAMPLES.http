@@ -1,0 +1,291 @@
+### QuickDrop API Examples
+### Use with REST Client VS Code extension or copy to Postman
+
+@baseUrl = http://localhost:3000
+@contentType = application/json
+
+###############################################
+# AUTHENTICATION
+###############################################
+
+### Register a new customer
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "name": "John Customer",
+  "email": "john@customer.com",
+  "password": "password123",
+  "role": "customer"
+}
+
+### Register a new rider
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "name": "Mike Rider",
+  "email": "mike@rider.com",
+  "password": "password123",
+  "role": "rider"
+}
+
+### Register a store manager
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "name": "Sarah Manager",
+  "email": "sarah@manager.com",
+  "password": "password123",
+  "role": "store_manager"
+}
+
+### Login (Sign In)
+POST {{baseUrl}}/api/auth/signin
+Content-Type: {{contentType}}
+
+{
+  "email": "john@customer.com",
+  "password": "password123"
+}
+
+### Sign Out
+POST {{baseUrl}}/api/auth/signout
+
+###############################################
+# PRODUCTS (Protected Routes)
+###############################################
+
+### Get all products
+GET {{baseUrl}}/api/products
+
+### Get products by category
+GET {{baseUrl}}/api/products?category=Fruits
+
+### Update product stock (set directly)
+PATCH {{baseUrl}}/api/products
+Content-Type: {{contentType}}
+
+{
+  "id": "product-uuid-here",
+  "stock": 50
+}
+
+### Increment product stock
+PATCH {{baseUrl}}/api/products
+Content-Type: {{contentType}}
+
+{
+  "product_id": "product-uuid-here",
+  "stock": 10,
+  "operation": "increment"
+}
+
+### Decrement product stock
+PATCH {{baseUrl}}/api/products
+Content-Type: {{contentType}}
+
+{
+  "product_id": "product-uuid-here",
+  "stock": 5,
+  "operation": "decrement"
+}
+
+###############################################
+# ORDERS (Protected Routes)
+###############################################
+
+### Get all orders
+GET {{baseUrl}}/api/orders
+
+### Create a new order
+POST {{baseUrl}}/api/orders
+Content-Type: {{contentType}}
+
+{
+  "customer_id": "customer-uuid-here",
+  "area": "Downtown",
+  "items": [
+    {
+      "product_id": "product-uuid-1",
+      "quantity": 2,
+      "price": 5.99
+    },
+    {
+      "product_id": "product-uuid-2",
+      "quantity": 1,
+      "price": 12.50
+    }
+  ]
+}
+
+### Get single order by ID
+GET {{baseUrl}}/api/orders/order-uuid-here
+
+### Update order status to picking
+PATCH {{baseUrl}}/api/orders/order-uuid-here
+Content-Type: {{contentType}}
+
+{
+  "status": "picking"
+}
+
+### Update order status to dispatched
+PATCH {{baseUrl}}/api/orders/order-uuid-here
+Content-Type: {{contentType}}
+
+{
+  "status": "dispatched"
+}
+
+### Update order status to delivered
+PATCH {{baseUrl}}/api/orders/order-uuid-here
+Content-Type: {{contentType}}
+
+{
+  "status": "delivered"
+}
+
+### Assign rider to order
+PATCH {{baseUrl}}/api/orders/order-uuid-here
+Content-Type: {{contentType}}
+
+{
+  "rider_id": "rider-uuid-here"
+}
+
+###############################################
+# RIDERS (Protected Routes)
+###############################################
+
+### Get all riders with active order count
+GET {{baseUrl}}/api/riders
+
+###############################################
+# CORS Preflight (OPTIONS)
+###############################################
+
+### Check CORS for orders
+OPTIONS {{baseUrl}}/api/orders
+
+### Check CORS for products
+OPTIONS {{baseUrl}}/api/products
+
+### Check CORS for riders
+OPTIONS {{baseUrl}}/api/riders
+
+###############################################
+# ERROR TESTING
+###############################################
+
+### Try to create order without authentication
+# Should return 401 Unauthorized
+POST {{baseUrl}}/api/orders
+Content-Type: {{contentType}}
+
+{
+  "customer_id": "test",
+  "area": "Test",
+  "items": []
+}
+
+### Try to register with invalid role
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "name": "Invalid User",
+  "email": "invalid@test.com",
+  "password": "password123",
+  "role": "invalid_role"
+}
+
+### Try to update order with invalid status
+PATCH {{baseUrl}}/api/orders/order-uuid-here
+Content-Type: {{contentType}}
+
+{
+  "status": "invalid_status"
+}
+
+###############################################
+# COMPLETE WORKFLOW EXAMPLE
+###############################################
+
+### 1. Register a customer
+POST {{baseUrl}}/api/auth/register
+Content-Type: {{contentType}}
+
+{
+  "name": "Alice Customer",
+  "email": "alice@example.com",
+  "password": "alice123",
+  "role": "customer"
+}
+
+### 2. Login as customer
+POST {{baseUrl}}/api/auth/signin
+Content-Type: {{contentType}}
+
+{
+  "email": "alice@example.com",
+  "password": "alice123"
+}
+
+### 3. Browse products
+GET {{baseUrl}}/api/products
+
+### 4. Create an order (use actual UUIDs from step 3)
+POST {{baseUrl}}/api/orders
+Content-Type: {{contentType}}
+
+{
+  "customer_id": "alice-uuid-from-step-1",
+  "area": "North District",
+  "items": [
+    {
+      "product_id": "product-uuid-from-step-3",
+      "quantity": 3,
+      "price": 4.99
+    }
+  ]
+}
+
+### 5. Check order status
+GET {{baseUrl}}/api/orders/order-uuid-from-step-4
+
+### 6. Store manager updates order to picking
+PATCH {{baseUrl}}/api/orders/order-uuid-from-step-4
+Content-Type: {{contentType}}
+
+{
+  "status": "picking"
+}
+
+### 7. Assign rider to order
+PATCH {{baseUrl}}/api/orders/order-uuid-from-step-4
+Content-Type: {{contentType}}
+
+{
+  "rider_id": "rider-uuid-here"
+}
+
+### 8. Rider updates to dispatched
+PATCH {{baseUrl}}/api/orders/order-uuid-from-step-4
+Content-Type: {{contentType}}
+
+{
+  "status": "dispatched"
+}
+
+### 9. Rider marks as delivered
+PATCH {{baseUrl}}/api/orders/order-uuid-from-step-4
+Content-Type: {{contentType}}
+
+{
+  "status": "delivered"
+}
+
+### 10. Check all riders and their active orders
+GET {{baseUrl}}/api/riders

@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-// CORS headers
-const headers = {
+const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'GET, PATCH, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
 export async function OPTIONS() {
-  return NextResponse.json({}, { headers });
+  return NextResponse.json({}, { headers: corsHeaders });
 }
 
-// GET: Fetch single order with all items and product details
+// GET: Fetch single order with all details
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -37,23 +36,23 @@ export async function GET(
     if (error) {
       return NextResponse.json(
         { error: error.message },
-        { status: 404, headers }
+        { status: 404, headers: corsHeaders }
       );
     }
 
     return NextResponse.json(
       { order },
-      { status: 200, headers }
+      { status: 200, headers: corsHeaders }
     );
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500, headers }
+      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { status: 500, headers: corsHeaders }
     );
   }
 }
 
-// PATCH: Update order status (pending→picking→dispatched→delivered)
+// PATCH: Update order status
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -61,57 +60,40 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { status, rider_id } = body;
+    const { status } = body;
 
     // Validate status
-    const validStatuses = ['pending', 'picking', 'dispatched', 'delivered'];
-    if (status && !validStatuses.includes(status)) {
+    const validStatuses = ['pending', 'picking', 'dispatched', 'delivered', 'cancelled'];
+    if (!status || !validStatuses.includes(status)) {
       return NextResponse.json(
         { error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` },
-        { status: 400, headers }
+        { status: 400, headers: corsHeaders }
       );
-    }
-
-    // Build update object
-    const updateData: any = {
-      updated_at: new Date().toISOString(),
-    };
-
-    if (status) {
-      updateData.status = status;
-    }
-
-    if (rider_id !== undefined) {
-      updateData.rider_id = rider_id;
     }
 
     // Update order
     const { data: order, error } = await supabase
       .from('orders')
-      .update(updateData)
+      .update({ status, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .select(`
-        *,
-        customer:users!customer_id(name),
-        rider:users!rider_id(name)
-      `)
+      .select()
       .single();
 
     if (error) {
       return NextResponse.json(
         { error: error.message },
-        { status: 400, headers }
+        { status: 400, headers: corsHeaders }
       );
     }
 
     return NextResponse.json(
       { order },
-      { status: 200, headers }
+      { status: 200, headers: corsHeaders }
     );
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500, headers }
+      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { status: 500, headers: corsHeaders }
     );
   }
 }

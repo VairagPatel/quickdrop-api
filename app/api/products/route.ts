@@ -1,147 +1,89 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-// CORS headers
-const headers = {
+const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'GET, PATCH, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
 export async function OPTIONS() {
-  return NextResponse.json({}, { headers });
+  return NextResponse.json({}, { headers: corsHeaders });
 }
 
 // GET: Fetch all products ordered by category
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
-
-    let query = supabase
+    const { data: products, error } = await supabase
       .from('products')
       .select('*')
       .order('category', { ascending: true })
       .order('name', { ascending: true });
 
-    // Filter by category if provided
-    if (category) {
-      query = query.eq('category', category);
-    }
-
-    const { data: products, error } = await query;
-
     if (error) {
       return NextResponse.json(
         { error: error.message },
-        { status: 400, headers }
+        { status: 400, headers: corsHeaders }
       );
     }
 
-    // Group products by category
-    const groupedProducts = products?.reduce((acc: any, product: any) => {
-      const category = product.category || 'Uncategorized';
-      if (!acc[category]) {
-        acc[category] = [];
-      }
-      acc[category].push(product);
-      return acc;
-    }, {});
-
     return NextResponse.json(
-      {
-        products,
-        grouped: groupedProducts,
-      },
-      { status: 200, headers }
+      { products },
+      { status: 200, headers: corsHeaders }
     );
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500, headers }
+      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { status: 500, headers: corsHeaders }
     );
   }
 }
 
-// PATCH: Update stock quantity
+// PATCH: Update product stock
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { product_id, stock, operation } = body;
+    const { id, stock } = body;
 
-    if (!product_id) {
+    // Validate required fields
+    if (!id || stock === undefined || stock === null) {
       return NextResponse.json(
-        { error: 'Missing required field: product_id' },
-        { status: 400, headers }
+        { error: 'Missing required fields: id, stock' },
+        { status: 400, headers: corsHeaders }
       );
     }
 
-    let updateData: any = {};
-
-    if (operation === 'increment' && stock !== undefined) {
-      // Increment stock
-      const { data: product, error: fetchError } = await supabase
-        .from('products')
-        .select('stock')
-        .eq('id', product_id)
-        .single();
-
-      if (fetchError) {
-        return NextResponse.json(
-          { error: fetchError.message },
-          { status: 404, headers }
-        );
-      }
-
-      updateData.stock = (product.stock || 0) + stock;
-    } else if (operation === 'decrement' && stock !== undefined) {
-      // Decrement stock
-      const { data: product, error: fetchError } = await supabase
-        .from('products')
-        .select('stock')
-        .eq('id', product_id)
-        .single();
-
-      if (fetchError) {
-        return NextResponse.json(
-          { error: fetchError.message },
-          { status: 404, headers }
-        );
-      }
-
-      updateData.stock = Math.max(0, (product.stock || 0) - stock);
-    } else if (stock !== undefined) {
-      // Set stock directly
-      updateData.stock = stock;
-    } else {
+    // Validate stock is a number
+    if (typeof stock !== 'number' || stock < 0) {
       return NextResponse.json(
-        { error: 'Missing required field: stock' },
-        { status: 400, headers }
+        { error: 'Stock must be a non-negative number' },
+        { status: 400, headers: corsHeaders }
       );
     }
 
-    const { data: updatedProduct, error } = await supabase
+    // Update product stock
+    const { data: product, error } = await supabase
       .from('products')
-      .update(updateData)
-      .eq('id', product_id)
+      .update({ stock })
+      .eq('id', id)
       .select()
       .single();
 
     if (error) {
       return NextResponse.json(
         { error: error.message },
-        { status: 400, headers }
+        { status: 400, headers: corsHeaders }
       );
     }
 
     return NextResponse.json(
-      { product: updatedProduct },
-      { status: 200, headers }
+      { product },
+      { status: 200, headers: corsHeaders }
     );
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500, headers }
+      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { status: 500, headers: corsHeaders }
     );
   }
 }
