@@ -14,10 +14,13 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          console.error('Missing credentials');
           return null;
         }
 
         try {
+          console.log('Attempting to authenticate user:', credentials.email);
+          
           // Query Supabase users table
           const { data: user, error } = await supabase
             .from('users')
@@ -25,9 +28,17 @@ export const authOptions: NextAuthOptions = {
             .eq('email', credentials.email)
             .single();
 
-          if (error || !user) {
+          if (error) {
+            console.error('Supabase query error:', error);
             return null;
           }
+
+          if (!user) {
+            console.error('User not found:', credentials.email);
+            return null;
+          }
+
+          console.log('User found, verifying password');
 
           // Verify password with bcrypt
           const isValidPassword = await bcrypt.compare(
@@ -36,8 +47,11 @@ export const authOptions: NextAuthOptions = {
           );
 
           if (!isValidPassword) {
+            console.error('Invalid password for user:', credentials.email);
             return null;
           }
+
+          console.log('Authentication successful for:', credentials.email);
 
           // Return user without password_hash
           return {
@@ -78,6 +92,7 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: 'jwt',
   },
+  debug: process.env.NODE_ENV === 'development',
 };
 
 // Helper function to get current user

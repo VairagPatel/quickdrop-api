@@ -3,7 +3,10 @@ import bcrypt from 'bcrypt';
 import { supabase } from '@/lib/supabase';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': process.env.NODE_ENV === 'production' 
+    ? 'https://quickdrop-web.vercel.app' 
+    : 'http://localhost:5173',
+  'Access-Control-Allow-Credentials': 'true',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
